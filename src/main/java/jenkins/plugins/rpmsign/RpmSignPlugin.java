@@ -139,6 +139,11 @@ public class RpmSignPlugin extends Recorder {
 
     rpmSignCommand.add("rpm", "--define");
     rpmSignCommand.add("_gpg_name " + gpgKey.getName());
+    rpmSignCommand.add("--define", "__gpg_sign_cmd " +
+        "/usr/bin/gpg2 gpg --no-verbose --no-armor --no-secmem-warning " +
+        "--pinentry-mode loopback -u '%{_gpg_name}' " +
+        "-sbo %{__signature_filename} %{__plaintext_filename}"
+	);
     rpmSignCommand.addTokenized(rpmEntry.getCmdlineOpts());
 
     if (rpmEntry.isResign()) {
@@ -160,7 +165,7 @@ public class RpmSignPlugin extends Recorder {
       writer.print("spawn ");
       writer.println(signCommand);
       writer.println("expect {");
-      writer.print("-re \"Enter pass *phrase: *\" { log_user 0; send -- \"");
+      writer.print("-re {(?i)enter( the)? pass ?phrase:?} { log_user 0; send -- \"");
       writer.print(passphrase);
       writer.println("\r\"; log_user 1; }");
       writer.println("eof { catch wait rc; exit [lindex $rc 3]; }");
@@ -180,7 +185,7 @@ public class RpmSignPlugin extends Recorder {
 
   private void importGpgKey(String privateKey, AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws InterruptedException, IOException {
     ArgumentListBuilder command = new ArgumentListBuilder();
-    command.add("gpg", "--import", "-");
+    command.add("gpg", "--batch", "--import", "-");
     Launcher.ProcStarter ps = launcher.new ProcStarter();
     ps = ps.cmds(command).stdout(listener);
     ps = ps.pwd(build.getWorkspace()).envs(build.getEnvironment(listener));
